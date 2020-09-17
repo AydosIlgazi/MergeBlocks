@@ -6,14 +6,17 @@ public class Block : MonoBehaviour
 {
     public int blockLevel { get; set; }
     public Material[] materials;
-    private bool isBlockClicked= false;
+    public bool isBlockReleased= false;
     private Vector3 screenPoint;
     private Vector3 offset;
     private GameObject gameStatus;
-    public float animationTime = 0.3f;
+    public GameObject electricAnimation;
+    public float animationTime = 1f;
+    public float minX;
+    public float maxX;
     public int blockScore = 0;
     Rigidbody rb;
-    // Start is called before the first frame update
+
     void Start()
     {
         rb = gameObject.GetComponent<Rigidbody>();
@@ -22,97 +25,94 @@ public class Block : MonoBehaviour
         SetBlockScore(1);
     }
 
-    // Update is called once per frame
     void Update()
     {
-        if (!isBlockClicked)
+        if (!isBlockReleased && Input.GetMouseButton(0))
         {
             OnMouseDrag();
         }
-        else
+
+        if (!Input.GetMouseButton(0) && !isBlockReleased)
         {
-        }
-        if (Input.GetMouseButtonDown(0) && !isBlockClicked)
-        {
+            rb.isKinematic = false;
             gameObject.GetComponent<Rigidbody>().constraints &= ~RigidbodyConstraints.FreezePositionY;
             SetBlockClicked();
-            gameStatus.GetComponent<GameStatus>().StartBlockCoroutine();
+            gameStatus.GetComponent<GameStatus>().blockOnHold = false;
         }
 
     }
-    void OnMouseDrag()
-    {
-        float distance_to_screen = Camera.main.WorldToScreenPoint(gameObject.transform.position).z;
-        Vector3 pos_move = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, distance_to_screen));
-        transform.position = new Vector3(pos_move.x, transform.position.y, pos_move.z);
 
-    }
-    public void SetBlockLevel(int level)
-    {
-        blockLevel = level;
-        gameObject.GetComponent<Renderer>().sharedMaterial = materials[blockLevel-1];
-    }
-    public void IncreaseBlockLevel(bool increaseScore)
-    {
-        blockLevel++;
-        if (increaseScore)
-        {
-            SetBlockScore(blockLevel);
-        }
-        gameObject.GetComponent<Renderer>().sharedMaterial = materials[blockLevel-1];
-        gameObject.transform.localScale += new Vector3(0.2f, 0.2f, 0.2f);
-    }
-    public void SetBlockClicked()
-    {
-        isBlockClicked = true;
-    }
     void OnCollisionEnter(Collision collision)
     {
-        Block targetBlock = collision.collider.GetComponent<Block>();
-        int targetBlockLevel=0;
-        if (targetBlock != null)
+        if (collision.gameObject.tag == "Block")
         {
-            targetBlockLevel = targetBlock.blockLevel;
+            Block targetBlock = collision.collider.GetComponent<Block>();
+            int targetBlockLevel = 0;
+            if (targetBlock != null)
+            {
+                targetBlockLevel = targetBlock.blockLevel;
+            }
+            Vector3 target = new Vector3();
+            target = Vector3.Lerp(gameObject.transform.position, collision.transform.position, 0.5f);
+            if (collision.gameObject.tag == "Block" && blockLevel == targetBlockLevel)
+            {
+                if (targetBlock.GetInstanceID() > GetInstanceID())
+                {
+                    StartCoroutine(BlockColliderAnimation(target, true));
+                }
+                else
+                {
+                    StartCoroutine(BlockColliderAnimation(target, false));
+                }
+            }
         }
-        Vector3 target = new Vector3();
-        target = Vector3.Lerp(gameObject.transform.position, collision.transform.position, 0.5f);
-        if (collision.gameObject.tag == "Block" && blockLevel == targetBlockLevel)
+        else if(collision.gameObject.tag == "Wall")
         {
-            if (targetBlock.GetInstanceID() > GetInstanceID())
-            {
-                StartCoroutine(BlockColliderAnimation(target,true));
-            }
-            else
-            {
-                StartCoroutine(BlockColliderAnimation(target,false));
-                Destroy(gameObject);
-            }
+            var electricAnimationObj = Instantiate(electricAnimation);
+            electricAnimationObj.transform.SetParent(gameObject.transform);
         }
 
     }
 
+    void OnMouseDrag()
+    {
 
-    IEnumerator BlockColliderAnimation(Vector3 target,bool increaseScore)
+        float pos_X = Mathf.Clamp(Input.mousePosition.x, minX, maxX);
+        float distance_to_screen = Camera.main.WorldToScreenPoint(gameObject.transform.position).z;
+        Vector3 pos_move = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, distance_to_screen));
+        transform.position = new Vector3(Mathf.Clamp(pos_move.x, minX, maxX), transform.position.y, pos_move.z);
+
+
+    }
+
+    IEnumerator BlockColliderAnimation(Vector3 target, bool increaseScore)
     {
         Vector3 current = gameObject.transform.position;
-
         float elapsedTime = 0;
 
         while (elapsedTime < animationTime)
         {
             rb.MovePosition(Vector3.Lerp(current, target, (elapsedTime / animationTime)));
             //transform.position = Vector3.Lerp(current, target, (elapsedTime / animationTime));
-            elapsedTime += Time.deltaTime;
+            elapsedTime += Time.fixedDeltaTime;
             yield return null;
         }
 
         IncreaseBlockLevel(increaseScore);
 
         yield return null;
-        StartCoroutine(RotateBlock(0.1f));
+        if (increaseScore)
+        {
+            StartCoroutine(RotateBlockTorque());
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
 
     }
-    IEnumerator RotateBlock(float inTime)
+
+    IEnumerator RotateBlockFixed(float inTime)
     {
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
@@ -142,7 +142,7 @@ public class Block : MonoBehaviour
         // rotate until reaching angle
         while (deltaAngle < angle)
         {
-            deltaAngle += rotationSpeed * Time.deltaTime;
+            deltaAngle += rotationSpeed * Time.fixedDeltaTime;
             deltaAngle = Mathf.Min(deltaAngle, angle);
 
             rb.rotation = startRotation * Quaternion.AngleAxis(deltaAngle, axis);
@@ -152,8 +152,40 @@ public class Block : MonoBehaviour
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.AddRelativeForce(Vector3.down);
-
     }
+    
+    IEnumerator RotateBlockTorque()
+    {
+        rb.velocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.AddRelativeForce(Vector3.down*10f);
+        rb.AddRelativeTorque(Vector3.up *45f, ForceMode.Force);
+
+        yield return null;
+    }
+
+    public void SetBlockLevel(int level)
+    {
+        blockLevel = level;
+        gameObject.GetComponent<Renderer>().sharedMaterial = materials[blockLevel-1];
+    }
+
+    public void IncreaseBlockLevel(bool increaseScore)
+    {
+        blockLevel++;
+        if (increaseScore)
+        {
+            SetBlockScore(blockLevel);
+        }
+        gameObject.GetComponent<Renderer>().sharedMaterial = materials[blockLevel-1];
+        gameObject.transform.localScale += new Vector3(0.2f, 0.2f, 0.2f);
+    }
+
+    public void SetBlockClicked()
+    {
+        isBlockReleased = true;
+    }
+
     public void SetBlockScore(int level)
     {
         var currScore = GetBlockScore();
@@ -161,6 +193,7 @@ public class Block : MonoBehaviour
 
         gameStatus.GetComponent<GameStatus>().IncreseGameScore(blockScore - (currScore*2));
     }
+
     public int GetBlockScore()
     {
         return blockScore;

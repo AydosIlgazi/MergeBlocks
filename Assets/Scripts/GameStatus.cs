@@ -12,7 +12,8 @@ public class GameStatus : MonoBehaviour
     public int maxLevel = 10;
     public Slider levelSlider;
     public TextMeshProUGUI levelText;
-    // Start is called before the first frame update
+    public bool blockOnHold;
+
     void Start()
     {
         levelSlider.minValue = 0;
@@ -20,28 +21,44 @@ public class GameStatus : MonoBehaviour
         levelSlider.value = 0;
         levelText.text = "Level " + currentLevel + '/' + maxLevel;
     }
+
     void Awake()
     {
-        StartBlockCoroutine();
+        //StartBlockCoroutine();
 
     }
 
-
-    // Update is called once per frame
     void Update()
     {
+        if (!blockOnHold)
+        {
+            if (Input.GetMouseButton(0))
+            {
+                blockOnHold = true;
+                StartCoroutine(CreateNewBlockHold());
+            }
+        }
 
     }
-    IEnumerator CreateNewBlock()
+
+    IEnumerator CreateNewBlockClick()
     {
         yield return new WaitForSeconds(2f);
         Instantiate(block, new Vector3(0f, 5f, 0f), Quaternion.identity);
         
     }
+
+    IEnumerator CreateNewBlockHold()
+    {
+        yield return null;
+        Instantiate(block, new Vector3(Input.mousePosition.x, 5f, 0f), Quaternion.identity);
+    }
+
     public void StartBlockCoroutine()
     {
         StartCoroutine("CreateNewBlock");
     }
+
     public void IncreseGameScore(int score)
     {
         if(score + gameScore < levelSlider.maxValue)
