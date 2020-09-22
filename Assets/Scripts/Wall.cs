@@ -29,13 +29,13 @@ public class Wall : MonoBehaviour
         {
             if (wallType == WallType.LeftWall)
             {
-                Vector3 forceVec = new Vector3(Random.Range(4f, 7f), Random.Range(3f, 5f));
+                Vector3 forceVec = new Vector3(Random.Range(6f, 10f), Random.Range(5f, 7f));
                 collision.collider.GetComponent<Rigidbody>().AddRelativeForce(forceVec , ForceMode.Impulse);
 
             }
             else
             {
-                Vector3 forceVec = new Vector3(Random.Range(-4f, 7f), Random.Range(3f, 5f));
+                Vector3 forceVec = new Vector3(Random.Range(-6f, -10f), Random.Range(5f, 7f));
                 collision.collider.GetComponent<Rigidbody>().AddRelativeForce(forceVec , ForceMode.Impulse);
 
             }

@@ -12,7 +12,10 @@ public class GameStatus : MonoBehaviour
     public int maxLevel = 10;
     public Slider levelSlider;
     public TextMeshProUGUI levelText;
+    public GameObject comboText;
     public bool blockOnHold;
+    public float lastCollisionTime = 0f;
+    private int collisionMultiplier = 1;
 
     void Start()
     {
@@ -75,5 +78,20 @@ public class GameStatus : MonoBehaviour
             levelSlider.value = surplusScore;
         }
         
+    }
+
+    public void CollisionMultiplier(float collisionTime)
+    {
+        if(collisionTime - lastCollisionTime < 3f)
+        {
+            collisionMultiplier++;
+            GameObject comboTextObj= Instantiate(comboText, transform);
+            comboTextObj.GetComponent<TextMeshPro>().text = collisionMultiplier.ToString() + 'x';
+        }
+        else
+        {
+            collisionMultiplier = 1;
+        }
+        lastCollisionTime = collisionTime;
     }
 }

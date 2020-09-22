@@ -11,11 +11,12 @@ public class Block : MonoBehaviour
     private Vector3 offset;
     private GameObject gameStatus;
     public GameObject electricAnimation;
-    public float animationTime = 1f;
+    public float animationTime = 0.5f;
     public float minX;
     public float maxX;
     public int blockScore = 0;
     Rigidbody rb;
+    public GameObject collisionAnimation;
 
     void Start()
     {
@@ -35,7 +36,7 @@ public class Block : MonoBehaviour
         if (!Input.GetMouseButton(0) && !isBlockReleased)
         {
             rb.isKinematic = false;
-            gameObject.GetComponent<Rigidbody>().constraints &= ~RigidbodyConstraints.FreezePositionY;
+            rb.constraints &= ~RigidbodyConstraints.FreezePositionY;
             SetBlockClicked();
             gameStatus.GetComponent<GameStatus>().blockOnHold = false;
         }
@@ -46,6 +47,7 @@ public class Block : MonoBehaviour
     {
         if (collision.gameObject.tag == "Block")
         {
+
             Block targetBlock = collision.collider.GetComponent<Block>();
             int targetBlockLevel = 0;
             if (targetBlock != null)
@@ -56,12 +58,17 @@ public class Block : MonoBehaviour
             target = Vector3.Lerp(gameObject.transform.position, collision.transform.position, 0.5f);
             if (collision.gameObject.tag == "Block" && blockLevel == targetBlockLevel)
             {
+
                 if (targetBlock.GetInstanceID() > GetInstanceID())
                 {
+                    Debug.Log(Time.time);
+                    gameStatus.GetComponent<GameStatus>().CollisionMultiplier(Time.time);
+                    gameObject.GetComponent<Collider>().enabled = false;
                     StartCoroutine(BlockColliderAnimation(target, true));
                 }
                 else
                 {
+                    gameObject.GetComponent<Collider>().enabled = false;
                     StartCoroutine(BlockColliderAnimation(target, false));
                 }
             }
@@ -87,6 +94,9 @@ public class Block : MonoBehaviour
 
     IEnumerator BlockColliderAnimation(Vector3 target, bool increaseScore)
     {
+        Instantiate(collisionAnimation, new Vector3(target.x,target.y,target.z),Quaternion.identity);
+        //rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ ;
+        rb.freezeRotation = true;
         Vector3 current = gameObject.transform.position;
         float elapsedTime = 0;
 
@@ -103,6 +113,8 @@ public class Block : MonoBehaviour
         yield return null;
         if (increaseScore)
         {
+            gameObject.GetComponent<Collider>().enabled = true;
+
             StartCoroutine(RotateBlockTorque());
         }
         else
@@ -156,10 +168,12 @@ public class Block : MonoBehaviour
     
     IEnumerator RotateBlockTorque()
     {
+        rb.freezeRotation = false;
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
-        rb.AddRelativeForce(Vector3.down*10f);
-        rb.AddRelativeTorque(Vector3.up *45f, ForceMode.Force);
+        yield return null;
+        //rb.AddRelativeForce(Vector3.down*10f);
+        rb.AddTorque(Vector3.up *180f, ForceMode.Impulse);
 
         yield return null;
     }
