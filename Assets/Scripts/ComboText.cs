@@ -12,7 +12,7 @@ public class ComboText : MonoBehaviour
 
     IEnumerator DestroyCoroutine()
     {
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(0.5f);
         Destroy(gameObject);
     }
 }

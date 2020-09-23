@@ -30,7 +30,7 @@ public class Block : MonoBehaviour
     {
         if (!isBlockReleased && Input.GetMouseButton(0))
         {
-            OnMouseDrag();
+            OnMouseDragX();
         }
 
         if (!Input.GetMouseButton(0) && !isBlockReleased)
@@ -61,7 +61,6 @@ public class Block : MonoBehaviour
 
                 if (targetBlock.GetInstanceID() > GetInstanceID())
                 {
-                    Debug.Log(Time.time);
                     gameStatus.GetComponent<GameStatus>().CollisionMultiplier(Time.time);
                     gameObject.GetComponent<Collider>().enabled = false;
                     StartCoroutine(BlockColliderAnimation(target, true));
@@ -81,7 +80,7 @@ public class Block : MonoBehaviour
 
     }
 
-    void OnMouseDrag()
+    void OnMouseDragX()
     {
 
         float pos_X = Mathf.Clamp(Input.mousePosition.x, minX, maxX);
@@ -94,7 +93,7 @@ public class Block : MonoBehaviour
 
     IEnumerator BlockColliderAnimation(Vector3 target, bool increaseScore)
     {
-        Instantiate(collisionAnimation, new Vector3(target.x,target.y,target.z),Quaternion.identity);
+        Instantiate(collisionAnimation, new Vector3(target.x,target.y,target.z-2f),Quaternion.identity);
         //rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ ;
         rb.freezeRotation = true;
         Vector3 current = gameObject.transform.position;
